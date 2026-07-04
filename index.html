@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Supervised Setup — YouTube DPDP Consent Prototype</title>
+<style>
+  :root{
+    --ink:#0F0F0F;
+    --panel:#181818;
+    --panel2:#212121;
+    --line:#303030;
+    --red:#E63946;
+    --red-dim:#5c1b21;
+    --teal:#2FBF9F;
+    --gold:#F4A259;
+    --text:#F1F1F1;
+    --muted:#AAAAAA;
+    --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(circle at 20% 10%, #1c1c26 0%, #0a0a0d 55%, #050505 100%);
+    min-height:100vh;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 16px;
+  }
+  .rig{
+    display:flex;
+    gap:36px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:1100px;
+  }
+  .side{
+    width:280px;
+    padding-top:24px;
+  }
+  .side h1{
+    font-size:20px;
+    line-height:1.35;
+    margin:0 0 10px;
+    color:var(--white);
+  }
+  .side h1 span{color:var(--red);}
+  .side p{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  .tracker{
+    margin-top:22px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .tracker .step{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:12px;
+    color:var(--muted);
+    opacity:.5;
+    transition:opacity .3s;
+  }
+  .tracker .step.active{opacity:1; color:var(--white);}
+  .tracker .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--muted);
+    flex-shrink:0;
+  }
+  .tracker .step.active .dot{background:var(--red);}
+  .tracker .step.done .dot{background:var(--teal);}
+
+  .phone{
+    width:340px;
+    height:700px;
+    background:#000;
+    border-radius:42px;
+    border:8px solid #1a1a1a;
+    box-shadow:0 40px 80px rgba(0,0,0,.55), inset 0 0 0 1px #2a2a2a;
+    position:relative;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .notch{
+    position:absolute;
+    top:0; left:50%; transform:translateX(-50%);
+    width:130px; height:22px;
+    background:#000;
+    border-bottom-left-radius:14px;
+    border-bottom-right-radius:14px;
+    z-index:20;
+  }
+  .screen{
+    position:absolute; inset:0;
+    background:var(--ink);
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    pointer-events:none;
+    transform:translateX(16px);
+    transition:opacity .28s ease, transform .28s ease;
+    padding-top:36px; /* clears the notch */
+  }
+  .screen.active{
+    opacity:1;
+    pointer-events:auto;
+    transform:translateX(0);
+  }
+  .statusbar{
+    display:none;
+  }
+  .content{
+    flex:1;
+    overflow-y:auto;
+    padding:18px 20px 20px;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:2px 20px 14px;
+  }
+  .topbar .logo{
+    width:26px;height:26px;border-radius:6px;
+    background:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:800;color:#fff;
+  }
+  .topbar .name{font-size:14px;font-weight:600;color:var(--white);}
+  .badge{
+    margin-left:auto;
+    font-size:9.5px;
+    color:var(--teal);
+    background:rgba(47,191,159,.12);
+    border:1px solid rgba(47,191,159,.35);
+    padding:3px 8px;
+    border-radius:20px;
+    font-weight:700;
+    letter-spacing:.4px;
+  }
+  h2.h{
+    font-size:20px;
+    font-weight:800;
+    margin:6px 0 6px;
+    color:var(--white);
+    line-height:1.3;
+  }
+  p.sub{
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.55;
+    margin:0 0 18px;
+  }
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:6px;
+    font-weight:600;
+    letter-spacing:.3px;
+  }
+  .field input, .field select{
+    width:100%;
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 12px;
+    color:var(--white);
+    font-size:13.5px;
+    outline:none;
+  }
+  .field input:focus, .field select:focus{border-color:var(--red);}
+  .btn{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:var(--red);
+    color:#fff;
+    border:none;
+    border-radius:24px;
+    padding:13px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    margin-top:6px;
+    transition:transform .12s, filter .12s;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:active{transform:scale(.98);}
+  .btn.secondary{
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--line);
+  }
+  .btn.teal{background:var(--teal);}
+  .btn.ghost-link{
+    background:none;border:none;color:var(--muted);
+    font-size:11.5px;text-decoration:underline;cursor:pointer;
+    padding:8px; width:auto; display:inline-block; margin:0 auto;
+  }
+  .center{text-align:center;}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .card .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .card .row + .row{margin-top:10px; padding-top:10px; border-top:1px solid var(--line);}
+  .row .label{font-size:12.5px; color:var(--text); font-weight:600;}
+  .row .desc{font-size:10.5px; color:var(--muted); margin-top:2px;}
+  .toggle{
+    width:38px;height:22px;border-radius:20px;
+    background:var(--panel2);
+    border:1px solid var(--line);
+    position:relative;
+    flex-shrink:0;
+  }
+  .toggle .knob{
+    position:absolute; top:2px; left:2px;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--muted);
+    transition:all .2s;
+  }
+  .toggle.on{background:rgba(47,191,159,.25); border-color:var(--teal);}
+  .toggle.on .knob{left:18px; background:var(--teal);}
+  .icon-circle{
+    width:56px;height:56px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin:6px auto 16px;
+    font-size:26px;
+  }
+  .icon-circle.red{background:rgba(230,57,70,.14); color:var(--red);}
+  .icon-circle.teal{background:rgba(47,191,159,.14); color:var(--teal);}
+  .icon-circle.gold{background:rgba(244,162,89,.14); color:var(--gold);}
+  .otp-row{display:flex; gap:8px; margin:14px 0 4px;}
+  .otp-row input{
+    width:38px; height:46px; text-align:center; font-size:18px; font-weight:700;
+    background:var(--panel2); border:1px solid var(--line); border-radius:10px; color:var(--white);
+  }
+  .mini{font-size:10.5px; color:var(--muted); margin-top:14px; line-height:1.5;}
+  .avatar{
+    width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(135deg,var(--gold),var(--red));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700; font-size:13px; color:#fff; flex-shrink:0;
+  }
+  .thumb{
+    background:var(--panel2);
+    border-radius:10px;
+    height:74px;
+    margin-bottom:8px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted); font-size:10px;
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .footer-note{
+    text-align:center; font-size:10px; color:#555; margin-top:16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="rig">
+
+  <div class="side">
+    <h1>Supervised Setup — <span>DPDP consent</span> prototype</h1>
+    <p>Happy-path, end-to-end flow: a minor signs up, a verifiable parental consent request goes out, the parent reviews and confirms, and the account launches with privacy-safe defaults.</p>
+    <div class="tracker" id="tracker"></div>
+    <p class="mini" style="margin-top:18px;">Tap through the buttons inside the screen to move forward. Built for the Vedantu PM case study.</p>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="statusbar"></div>
+
+    <!-- SCREEN 1: Sign up -->
+    <div class="screen active" data-screen="1">
+      <div class="topbar"><div class="logo">▶</div><div class="name">Create account</div></div>
+      <div class="content">
+        <h2 class="h">Let's set up your account</h2>
+        <p class="sub">Just a few details to get you watching.</p>
+        <div class="field"><label>Name</label><input value="Riya Sharma" readonly></div>
+        <div class="field"><label>Email</label><input value="riya.sharma@gmail.com" readonly></div>
+        <div class="field">
+          <label>Date of birth</label>
+          <input value="14 / 03 / 2011" readonly>
+        </div>
+        <button class="btn" onclick="go(2)">Continue</button>
+        <p class="mini center">We use your birthday to give you an age-appropriate experience.</p>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: Detection -->
+    <div class="screen" data-screen="2">
+      <div class="topbar"><div class="logo">▶</div><div class="name">One moment</div></div>
+      <div class="content center">
+        <div class="icon-circle gold">🛡️</div>
+        <h2 class="h">You're under 18 — let's set up Supervised Mode</h2>
+        <p class="sub" style="text-align:left;">Indian law (the DPDP Act, 2023) requires a parent or guardian to confirm before we can personalise your experience. This keeps your account safe and compliant.</p>
+        <div class="card" style="text-align:left;">
+          <div class="row"><div><div class="label">Ad personalisation</div><div class="desc">Off until a parent decides</div></div><span>⏳</span></div>
+          <div class="row"><div><div class="label">Watch history tracking</div><div class="desc">Limited by default</div></div><span>⏳</span></div>
+          <div class="row"><div><div class="label">Content maturity</div><div class="desc">Age-appropriate only</div></div><span>✅</span></div>
+        </div>
+        <button class="btn" onclick="go(3)">Notify my parent</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: Parent request sent -->
+    <div class="screen" data-screen="3">
+      <div class="topbar"><div class="logo">▶</div><div class="name">Consent request</div></div>
+      <div class="content center">
+        <div class="icon-circle red">✉️</div>
+        <h2 class="h">Request sent to your parent</h2>
+        <p class="sub">We've emailed and texted <strong>anita.sharma@gmail.com</strong> to review and confirm Riya's privacy settings.</p>
+        <div class="card" style="text-align:left;">
+          <div class="row"><div class="label">To</div><div class="desc">Anita Sharma (parent)</div></div>
+          <div class="row"><div class="label">Subject</div><div class="desc">Riya wants to use YouTube — please confirm</div></div>
+          <div class="row"><div class="label">Expected action</div><div class="desc">Review data use + confirm via OTP</div></div>
+        </div>
+        <p class="mini">In the meantime, Riya can browse with personalisation and tracking off.</p>
+        <button class="btn secondary" onclick="go(3.5)">Continue as browsing preview</button>
+        <button class="btn ghost-link" onclick="go(4)">Simulate: open parent's link →</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3.5: restricted preview home -->
+    <div class="screen" data-screen="3.5">
+      <div class="topbar"><div class="logo">▶</div><div class="name">Home</div><span class="badge">AWAITING PARENT</span></div>
+      <div class="content">
+        <div class="grid2">
+          <div><div class="thumb">Homework help</div></div>
+          <div><div class="thumb">Science shorts</div></div>
+          <div><div class="thumb">Music mix</div></div>
+          <div><div class="thumb">Art tutorial</div></div>
+        </div>
+        <p class="mini">Feed is un-personalised and no watch data is being used for recommendations while consent is pending.</p>
+        <button class="btn" onclick="go(4)">Simulate: parent opens the link →</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: Parent view intro -->
+    <div class="screen" data-screen="4">
+      <div class="topbar"><div class="avatar">A</div><div class="name">Anita's view</div></div>
+      <div class="content">
+        <h2 class="h">Riya wants to use YouTube</h2>
+        <p class="sub">As her parent, please review what's collected and set her privacy defaults. This takes about a minute.</p>
+        <div class="card">
+          <div class="row"><div><div class="label">What we collect</div><div class="desc">Watch & search activity, device info</div></div></div>
+          <div class="row"><div><div class="label">Why</div><div class="desc">To run the app and show relevant videos</div></div></div>
+          <div class="row"><div><div class="label">What we won't do</div><div class="desc">No targeted ads or tracking without your OK</div></div></div>
+        </div>
+        <button class="btn" onclick="go(5)">Review & verify identity</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: OTP -->
+    <div class="screen" data-screen="5">
+      <div class="topbar"><div class="avatar">A</div><div class="name">Verify it's you</div></div>
+      <div class="content center">
+        <div class="icon-circle red">🔐</div>
+        <h2 class="h">Enter the code we sent</h2>
+        <p class="sub">Sent to +91 98••• ••210. This confirms you're Riya's parent or guardian.</p>
+        <div class="otp-row">
+          <input value="4" readonly><input value="8" readonly><input value="1" readonly><input value="9" readonly>
+        </div>
+        <button class="btn" onclick="go(6)">Verify</button>
+        <p class="mini">Didn't get it? Resend code · Use ID verification instead</p>
+      </div>
+    </div>
+
+    <!-- SCREEN 6: Consent preferences -->
+    <div class="screen" data-screen="6">
+      <div class="topbar"><div class="avatar">A</div><div class="name">Privacy defaults</div></div>
+      <div class="content">
+        <h2 class="h">Set Riya's defaults</h2>
+        <p class="sub">Recommended settings for minors — you can change any of these any time.</p>
+        <div class="card">
+          <div class="row"><div><div class="label">Ad personalisation</div><div class="desc">Show generic, non-targeted ads only</div></div><div class="toggle" id="t1" onclick="toggle('t1')"><div class="knob"></div></div></div>
+          <div class="row"><div><div class="label">Watch history for recommendations</div><div class="desc">Off — feed stays un-personalised</div></div><div class="toggle" id="t2" onclick="toggle('t2')"><div class="knob"></div></div></div>
+          <div class="row"><div><div class="label">Data retention</div><div class="desc">Auto-delete activity every 30 days</div></div><div class="toggle on" id="t3" onclick="toggle('t3')"><div class="knob"></div></div></div>
+        </div>
+        <button class="btn teal" onclick="go(7)">Confirm & grant consent</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 7: Confirmation -->
+    <div class="screen" data-screen="7">
+      <div class="topbar"><div class="avatar">A</div><div class="name">All set</div></div>
+      <div class="content center">
+        <div class="icon-circle teal">✅</div>
+        <h2 class="h">Consent confirmed</h2>
+        <p class="sub">Riya's account is now active in Supervised Mode with your chosen defaults. You can review or withdraw consent anytime from Family Settings.</p>
+        <div class="card" style="text-align:left;">
+          <div class="row"><div class="label">Status</div><div class="desc">Valid · renews in 12 months</div></div>
+          <div class="row"><div class="label">Ads</div><div class="desc">Non-personalised</div></div>
+          <div class="row"><div class="label">Data rights</div><div class="desc">Access, correct or delete anytime</div></div>
+        </div>
+        <button class="btn" onclick="go(8)">Take me to Riya's home →</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 8: Supervised home -->
+    <div class="screen" data-screen="8">
+      <div class="topbar"><div class="logo">▶</div><div class="name">Home</div><span class="badge">SUPERVISED</span></div>
+      <div class="content">
+        <div class="grid2">
+          <div><div class="thumb">Homework help</div></div>
+          <div><div class="thumb">Science shorts</div></div>
+          <div><div class="thumb">Music mix</div></div>
+          <div><div class="thumb">Art tutorial</div></div>
+        </div>
+        <div class="card">
+          <div class="row"><div><div class="label">Family Privacy Dashboard</div><div class="desc">View, correct or delete Riya's data</div></div><span>›</span></div>
+        </div>
+        <button class="btn secondary" onclick="go(1)">↺ Restart prototype</button>
+        <p class="footer-note">End of happy path · DPDP-aligned consent flow</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const order = ["1","2","3","3.5","4","5","6","7","8"];
+  const labels = {
+    "1":"Sign up", "2":"Age detected", "3":"Consent sent", "3.5":"Restricted preview",
+    "4":"Parent reviews", "5":"Identity check", "6":"Set defaults", "7":"Confirmed", "8":"Supervised home"
+  };
+  const trackerEl = document.getElementById('tracker');
+  order.forEach(id=>{
+    const d = document.createElement('div');
+    d.className = 'step';
+    d.dataset.step = id;
+    d.innerHTML = `<div class="dot"></div><div>${labels[id]}</div>`;
+    trackerEl.appendChild(d);
+  });
+
+  function go(id){
+    id = String(id);
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.querySelector('.screen[data-screen="'+id+'"]').classList.add('active');
+    const idx = order.indexOf(id);
+    document.querySelectorAll('.tracker .step').forEach(s=>{
+      const sidx = order.indexOf(s.dataset.step);
+      s.classList.remove('active','done');
+      if(sidx < idx) s.classList.add('done');
+      if(sidx === idx) s.classList.add('active');
+    });
+  }
+  function toggle(id){
+    document.getElementById(id).classList.toggle('on');
+  }
+  go("1");
+</script>
+
+</body>
+</html>
